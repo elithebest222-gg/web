@@ -1,0 +1,61 @@
+name: Copy Stardew Port
+on:
+  workflow_dispatch:
+
+jobs:
+  copy-files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Clone Stardew source repository
+        run: |
+          # Clones the degloved-net/stardew-wasm repository with minimal history
+          git clone --depth 1 https://github.com/degloved-net/stardew-wasm temp-repo
+
+      - name: Move Assets to Target Location
+        run: |
+          # Setup destination root structure
+          mkdir -p games/stardew
+          
+          # Copy over everything except git files, readme, and licenses
+          if [ -d "temp-repo" ]; then
+            rsync -av --exclude='.git' --exclude='README.md' --exclude='LICENSE' temp-repo/ games/stardew/
+          else
+            echo "::error::Source repository folder temp-repo not found!"
+            exit 1
+          fi
+
+      - name: Remove Base Line in Index (Case Insensitive)
+        run: |
+          INDEX_FILES=$(find games/stardew -iname "*.html")
+          
+          if [ -n "$INDEX_FILES" ]; then
+            for file in $INDEX_FILES; do
+              echo "Processing base href removal for: $file"
+              sed -i '/<base href=/Id' "$file"
+            done
+            echo "Successfully completed base href sanitization."
+          else
+            echo "::error::No HTML files found anywhere in games/stardew!"
+            exit 1
+          fi
+
+      - name: Clean Up Temporary Workspace
+        run: |
+          rm -rf temp-repo
+
+      - name: Commit and push changes safely to main
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage and commit the new game assets
+          git add games/stardew/
+          git commit -m "Imported Stardew web assets directly via standard web sync" || echo "No changes to commit"
+          
+          git pull --rebase origin main
+          git push origin main
