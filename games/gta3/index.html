@@ -49,33 +49,8 @@
   })();
 </script>
 <script>
+  // Preserved Canvas WebGL context attributes adjustment
   (function() {
-    var ORIG_FETCH = window.fetch;
-    window.fetch = function(url, opts) {
-      if (typeof url === 'string' && /re3\.data$/i.test(url) && !/\.(chunk|part)/.test(url)) {
-        return loadDataParts();
-      }
-      return ORIG_FETCH.call(this, url, opts);
-    };
-    async function loadDataParts() {
-      var parts = [];
-      for (var i = 0; ; i++) {
-        var resp = await ORIG_FETCH.call(window, 're3.chunk.' + i);
-        if (!resp.ok) break;
-        parts.push(await resp.arrayBuffer());
-      }
-      var total = parts.reduce(function(s, p) { return s + p.byteLength; }, 0);
-      var combined = new Uint8Array(total);
-      var offset = 0;
-      for (var pi = 0; pi < parts.length; pi++) {
-        combined.set(new Uint8Array(parts[pi]), offset);
-        offset += parts[pi].byteLength;
-      }
-      return new Response(combined, {
-        status: 200,
-        headers: { 'Content-Type': 'application/octet-stream' }
-      });
-    }
     var origGetContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function(type, attrs) {
       if (type.indexOf('webgl') === 0 || type.indexOf('experimental-webgl') === 0) {
@@ -85,6 +60,7 @@
     };
   })();
 
+  // Fullscreen restriction overrides
   Element.prototype.requestFullscreen =
   Element.prototype.webkitRequestFullscreen = function() {
     return Promise.reject(new DOMException("blocked"));
@@ -104,6 +80,7 @@
     get: function() { return false; }
   });
 
+  // Audio Context unlock handling
   (function() {
     var RealAC = window.AudioContext || window.webkitAudioContext;
     if (!RealAC) return;
