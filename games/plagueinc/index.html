@@ -61,7 +61,8 @@
     <script src="Build/bb0d9ecdb05db3e84da20bd14a4f84dc.loader.js"></script>
 
     <script>
-      const baseBuild = "/Build";
+      // Fixed: Added trailing slash to prevent path concatenation errors
+      const baseBuild = "/Build/";
 
       const MAX_RETRIES = 3;
       const RETRY_DELAY_MS = 1000;
@@ -171,7 +172,7 @@
           dataUrl: dataUrl,
           frameworkUrl: baseBuild + "b4b58f3ff6d98fbfb83482e25e0e9a5c.framework.js",
           codeUrl: wasmUrl,
-          streamingAssetsUrl: base + "StreamingAssets",
+          streamingAssetsUrl: baseBuild + "StreamingAssets", // Fixed: 'base' changed to 'baseBuild'
           companyName: "Ndemic Creations",
           productName: "Plague Inc",
           productVersion: "1.18.3.2"
