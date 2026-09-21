@@ -27,12 +27,52 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    text-align: center;
   }
 </style>
 </head>
 <body>
-<div id="loading">Loading GTA III...</div>
+<div id="loading">Initializing patch...</div>
+
 <script>
+  // Global variable to hold stitched game assets
+  let dataBlob = null;
+
+  // Network Interceptor: Redirects engine asset requests directly to memory
+  (function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      const url = typeof input === 'string' ? input : input.url;
+      if (url && url.endsWith('re3.data')) {
+        return Promise.resolve(new Response(dataBlob));
+      }
+      return originalFetch.apply(this, arguments);
+    };
+
+    const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      this._url = url;
+      return originalOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function(body) {
+      if (this._url && this._url.endsWith('re3.data')) {
+        Object.defineProperty(this, 'readyState', { value: 4 });
+        Object.defineProperty(this, 'status', { value: 200 });
+        const reader = new FileReader();
+        reader.onload = () => {
+          Object.defineProperty(this, 'response', { value: reader.result });
+          Object.defineProperty(this, 'responseText', { value: '' });
+          if (this.onreadystatechange) this.onreadystatechange();
+          if (this.onload) this.onload();
+        };
+        reader.readAsArrayBuffer(dataBlob);
+        return;
+      }
+      return originalSend.apply(this, arguments);
+    };
+  })();
+
   window.addEventListener('unhandledrejection', function(e) {
     if (e.reason && e.reason.name && e.reason.name.indexOf('DocumentError') !== -1) {
       e.preventDefault();
@@ -40,6 +80,7 @@
     }
     document.getElementById('loading').textContent = 'ERR: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
   });
+
   (function() {
     var _rpl = Element.prototype.requestPointerLock;
     if (_rpl) Element.prototype.requestPointerLock = function() {
@@ -48,6 +89,7 @@
     };
   })();
 </script>
+
 <script>
   // Preserved Canvas WebGL context attributes adjustment
   (function() {
@@ -105,7 +147,9 @@
     if (window.webkitAudioContext) window.webkitAudioContext = Wrapper;
   })();
 </script>
+
 <script>
+  // Emscripten Engine Setup
   var Module = {
     preRun: [],
     postRun: [],
@@ -126,11 +170,102 @@
     totalDependencies: 0,
     monitorRunDependencies: function(left) {
       this.totalDependencies = Math.max(this.totalDependencies, left);
-      Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
+      Module.setStatus(left ? 'Preparing Engine... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : '');
     }
   };
-  Module.setStatus('Loading...');
 </script>
-<script src="re3.js"></script>
+
+<script>
+  // Chunk Stream Downloader Logic
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 1000;
+  const partProgress = new Map();
+
+  function updateUI() {
+    let loaded = 0;
+    for (const v of partProgress.values()) loaded += v;
+    const mb = (loaded / 1024 / 1024).toFixed(1);
+    document.getElementById("loading").textContent = "Downloading Game Assets: " + mb + " MB...";
+  }
+
+  async function fetchPartWithRetry(url, retries = MAX_RETRIES) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("HTTP " + res.status + " for " + url);
+
+        if (attempt > 0) {
+          partProgress.set(url, 0);
+          updateUI();
+        }
+
+        const reader = res.body.getReader();
+        const chunks = [];
+        let received = 0;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.byteLength;
+          partProgress.set(url, received);
+          updateUI();
+        }
+
+        const out = new Uint8Array(received);
+        let off = 0;
+        for (const c of chunks) {
+          out.set(c, off);
+          off += c.byteLength;
+        }
+        return out.buffer;
+      } catch (err) {
+        if (attempt < retries) {
+          console.warn(`Retry ${attempt + 1}/${retries} for ${url}:`, err.message);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * (attempt + 1)));
+        } else {
+          throw new Error("Failed after configurations: " + url);
+        }
+      }
+    }
+  }
+
+  async function start() {
+    const chunkCount = 39; // Chunks 0 through 38
+    const chunkUrls = [];
+    for (let i = 0; i < chunkCount; i++) {
+      chunkUrls.push(`re3.chunk.${i}`);
+    }
+
+    // Load all chunks concurrently
+    const buffers = await Promise.all(chunkUrls.map((url) => fetchPartWithRetry(url)));
+
+    let totalSize = 0;
+    for (const b of buffers) totalSize += b.byteLength;
+
+    // Stitch chunks sequentially into one single array
+    const combined = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const b of buffers) {
+      combined.set(new Uint8Array(b), offset);
+      offset += b.byteLength;
+    }
+
+    // Convert to target content blob
+    dataBlob = new Blob([combined], { type: "application/octet-stream" });
+
+    document.getElementById("loading").textContent = "Starting GTA III...";
+
+    // Dynamically inject engine runner once data is fully mapped in system memory
+    const script = document.createElement("script");
+    script.src = "re3.js";
+    document.body.appendChild(script);
+  }
+
+  start().catch(function (err) {
+    document.getElementById("loading").textContent = "Error: " + err.message;
+    console.error(err);
+  });
+</script>
 </body>
 </html>
