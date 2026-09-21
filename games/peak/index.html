@@ -45,51 +45,39 @@
       // Manifest written by make_cdn_bundle.py. Each entry is either a plain file or a
       // list of parts that must be concatenated back together in order.
       var MANIFEST = {
-  "data": {
-    "file": "WebGL.data.unityweb",
-    "parts": [
-      "WebGL.data.unityweb.part000",
-      "WebGL.data.unityweb.part001",
-      "WebGL.data.unityweb.part002",
-      "WebGL.data.unityweb.part003",
-      "WebGL.data.unityweb.part004",
-      "WebGL.data.unityweb.part005",
-      "WebGL.data.unityweb.part006",
-      "WebGL.data.unityweb.part007",
-      "WebGL.data.unityweb.part008",
-      "WebGL.data.unityweb.part009",
-      "WebGL.data.unityweb.part010",
-      "WebGL.data.unityweb.part011",
-      "WebGL.data.unityweb.part012"
-    ],
-    "bytes": 241608952
-  },
-  "code": {
-    "file": "WebGL.wasm.unityweb",
-    "bytes": 12657365
-  },
-  "framework": {
-    "file": "WebGL.framework.js.unityweb",
-    "bytes": 85982
-  },
-  "loader": {
-    "file": "WebGL.loader.js",
-    "bytes": 117365
-  }
-};
-      var BUILD = "Build";
-      // Empty for a same-origin build. When set, <base> already redirects the fetches on
-      // this page; this stamps the same root onto our own URL so the C# level streamer
-      // (which resolves bundle URLs against Application.absoluteURL, ignoring <base>)
-      // fetches LevelBundles from the CDN too instead of from wherever the page is hosted.
-      var CDN_BASE = "https://cdn.jsdelivr.net/gh/wasmdotrip/Peak-Port@main";
-      if (CDN_BASE) {
-        var u = new URL(window.location.href);
-        if (u.searchParams.get("cdn") !== CDN_BASE) {
-          u.searchParams.set("cdn", CDN_BASE);
-          history.replaceState(null, "", u.toString());
+        "data": {
+          "file": "WebGL.data.unityweb",
+          "parts": [
+            "WebGL.data.unityweb.part000",
+            "WebGL.data.unityweb.part001",
+            "WebGL.data.unityweb.part002",
+            "WebGL.data.unityweb.part003",
+            "WebGL.data.unityweb.part004",
+            "WebGL.data.unityweb.part005",
+            "WebGL.data.unityweb.part006",
+            "WebGL.data.unityweb.part007",
+            "WebGL.data.unityweb.part008",
+            "WebGL.data.unityweb.part009",
+            "WebGL.data.unityweb.part010",
+            "WebGL.data.unityweb.part011",
+            "WebGL.data.unityweb.part012"
+          ],
+          "bytes": 241608952
+        },
+        "code": {
+          "file": "WebGL.wasm.unityweb",
+          "bytes": 12657365
+        },
+        "framework": {
+          "file": "WebGL.framework.js.unityweb",
+          "bytes": 85982
+        },
+        "loader": {
+          "file": "WebGL.loader.js",
+          "bytes": 117365
         }
-      }
+      };
+      var BUILD = "Build";
 
       var canvas  = document.querySelector("#unity-canvas");
       var bar     = document.querySelector("#bar");
@@ -99,8 +87,7 @@
       function setMsg(t) { msg.textContent = t; }
       function mb(bytes) { return (bytes / 1048576).toFixed(1); }
 
-      // Total download size, measured at package time — no HEAD requests needed, and it
-      // stays correct even if the CDN omits Content-Length on a streamed response.
+      // Total download size, measured at package time
       var TOTAL = MANIFEST.data.bytes + MANIFEST.framework.bytes + MANIFEST.code.bytes;
       var downloaded = 0;
 
@@ -113,9 +100,6 @@
       }
 
       // Fetch every part and glue them into one Blob, then expose it as a blob: URL.
-      // Unity's loader treats it like any other URL, so splitting stays invisible to it.
-      // The body is read through a stream reader so the byte counter moves continuously
-      // instead of jumping once per completed part.
       async function assemble(entry, label) {
         var urls = entry.parts || [entry.file];
         var buffers = [];
@@ -169,8 +153,6 @@
               window.unityInstance = instance;
               bar.style.display = "none";
               setMsg("");
-              // Unity's own SetFullscreen keeps the canvas sized to the screen; the
-              // Fullscreen API on the element alone leaves the render target unchanged.
               var fs = document.querySelector("#fs");
               fs.style.display = "block";
               fs.onclick = function () {
