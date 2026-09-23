@@ -1,6 +1,11 @@
-name: Copy Stardew Port
+name: Copy Hollow Knight Port
 on:
   workflow_dispatch:
+
+# Prevents collision with other deployment or push workflows
+concurrency:
+  group: hollow-knight-import
+  cancel-in-progress: false
 
 jobs:
   copy-files:
@@ -11,19 +16,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone Stardew source repository
+      - name: Clone Hollow Knight source repository
         run: |
-          # Clones the degloved-net/stardew-wasm repository with minimal history
-          git clone --depth 1 https://github.com/degloved-net/stardew-wasm temp-repo
+          # Clones the target repository with shallow history to optimize build speed
+          git clone --depth 1 https://github.com/elithebest222-gg/hollow-knight temp-repo
 
       - name: Move Assets to Target Location
         run: |
-          # Setup destination root structure
-          mkdir -p games/stardew
+          # Create explicit subfolder layout
+          mkdir -p games/hollow-knight
           
-          # Copy over everything except git files, readme, and licenses
           if [ -d "temp-repo" ]; then
-            rsync -av --exclude='.git' --exclude='README.md' --exclude='LICENSE' temp-repo/ games/stardew/
+            # Syncs folders and standalone split sharedassets*.resource files 
+            rsync -av --delete \
+              --exclude='.git' \
+              --exclude='README.md' \
+              --exclude='LICENSE' \
+              --exclude='wrangler.jsonc' \
+              temp-repo/ games/hollow-knight/
           else
             echo "::error::Source repository folder temp-repo not found!"
             exit 1
@@ -31,20 +41,22 @@ jobs:
 
       - name: Remove Base Line in Index (Case Insensitive)
         run: |
-          INDEX_FILES=$(find games/stardew -iname "*.html")
+          INDEX_FILES=$(find games/hollow-knight -type f \( -name "*.html" -o -name "*.HTML" \))
           
           if [ -n "$INDEX_FILES" ]; then
             for file in $INDEX_FILES; do
               echo "Processing base href removal for: $file"
+              # Purges HTML base href adjustments that break subfolder execution paths
               sed -i '/<base href=/Id' "$file"
             done
             echo "Successfully completed base href sanitization."
           else
-            echo "::error::No HTML files found anywhere in games/stardew!"
+            echo "::error::No HTML files found inside games/hollow-knight!"
             exit 1
           fi
 
       - name: Clean Up Temporary Workspace
+        if: always()
         run: |
           rm -rf temp-repo
 
@@ -53,9 +65,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Stage and commit the new game assets
-          git add games/stardew/
-          git commit -m "Imported Stardew web assets directly via standard web sync" || echo "No changes to commit"
-          
-          git pull --rebase origin main
-          git push origin main
+          git add games/hollow-knight/
+          if ! git diff --cached --quiet; then
+            git commit -m "Imported Hollow Knight web assets directly via standard web sync"
+            git pull --rebase origin main
+            git push origin main
+          else
+            echo "No changes detected. Skipping commit."
+          fi
