@@ -5,56 +5,102 @@
   <title>Local WebTorrent Client</title>
   <style>
     body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; text-align: center; background: #121212; color: #fff; }
-    input { width: 80%; padding: 12px; margin-bottom: 20px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; }
-    button { padding: 12px 24px; background: #4caf50; border: none; color: white; border-radius: 4px; cursor: pointer; }
-    #output video, #output img { max-width: 100%; margin-top: 20px; border-radius: 8px; }
-    #log { color: #aaa; margin-top: 15px; font-size: 14px; }
+    input { width: 80%; padding: 12px; margin-bottom: 10px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; font-size: 14px; }
+    button { padding: 12px 24px; background: #4caf50; border: none; color: white; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
+    button:hover { background: #45a049; }
+    #output video, #output img { max-width: 100%; margin-top: 20px; border-radius: 8px; border: 1px solid #333; }
+    #log { color: #00ffcc; margin-top: 15px; font-size: 14px; white-space: pre-wrap; font-family: monospace; background: #1e1e1e; padding: 15px; border-radius: 6px; text-align: left; }
+    .test-box { margin-top: 25px; padding: 15px; background: #222; border-radius: 6px; font-size: 13px; color: #aaa; }
+    .test-link { color: #4caf50; cursor: pointer; text-decoration: underline; }
   </style>
 </head>
 <body>
 
   <h1>⚡ Natively Hosted WebTorrent Player</h1>
-  <p>Running entirely out of local repository storage in /tools/torrent/</p>
+  <p>Running entirely out of local repository storage.</p>
   
-  <input type="text" id="magnetLink" placeholder="Paste magnet URI here...">
+  <input type="text" id="magnetLink" placeholder="Paste WebRTC magnet URI or .torrent URL here...">
   <button id="downloadBtn">Stream Torrent</button>
 
-  <div id="log">Status: Idle</div>
+  <div id="log">Status: Engine Idle. Ready for input.</div>
   <div id="output"></div>
 
-  <!-- Relative local path -->
+  <div class="test-box">
+    <strong>Don't have a link?</strong> Click this verified WebRTC test stream: <br><br>
+    <span class="test-link" id="testLink">Load Sintel (Open Source Movie)</span>
+  </div>
+
+  <!-- Local Script Asset Link -->
   <script src="./webtorrent.min.js"></script>
 
   <script>
+    // Initialize WebTorrent Client
     const client = new WebTorrent()
     const log = document.getElementById('log')
     const output = document.getElementById('output')
 
+    // Quick Test Link Injector
+    document.getElementById('testLink').addEventListener('click', () => {
+      document.getElementById('magnetLink').value = 'magnet:?xt=urn:btih:08ada5a7a618a12032ba97d50ba7b8d30822a03d&dn=Sintel&tr=wss%3A%2F%2Ftracker.btorrent.xyz&tr=wss%3A%2F%2Ftracker.fastcast.nz&tr=wss%3A%2F%://openwebtorrent.com'
+      printLog('Test magnet loaded into input box.')
+    })
+
+    function printLog(msg) {
+      log.innerText = "Log Update:\n" + msg
+    }
+
     document.getElementById('downloadBtn').addEventListener('click', () => {
       const magnetURI = document.getElementById('magnetLink').value.trim()
-      if (!magnetURI) return alert('Please paste a valid magnet link!')
+      if (!magnetURI) return alert('Please paste a valid magnet link first!')
 
-      log.innerText = 'Connecting to WebRTC peers...'
-      output.innerHTML = ''
+      printLog('Initializing connection...\nAttempting contact with WebRTC signaling trackers.')
+      output.innerHTML = '' // Clear prior renders
 
-      client.add(magnetURI, (torrent) => {
-        log.innerText = `Streaming: ${torrent.name} (Peers: ${torrent.numPeers})`
+      try {
+        // Add torrent to client engine
+        const torrent = client.add(magnetURI)
 
-        torrent.on('wire', () => {
-          log.innerText = `Streaming: ${torrent.name} (Peers: ${torrent.numPeers})`
+        // Monitor initial peer hookup wires
+        torrent.on('wire', (wire, addr) => {
+          printLog(`Connected to Peer! Metadata download sync starting.`)
         })
 
-        const file = torrent.files.find(f => 
-          f.name.endsWith('.mp4') || f.name.endsWith('.webm') || 
-          f.name.endsWith('.mp3') || f.name.endsWith('.jpg') || f.name.endsWith('.png')
-        )
+        // Execute render routine once torrent configuration metadata resolves 
+        torrent.on('ready', () => {
+          printLog(`Metadata resolved!\nName: ${torrent.name}\nPeers: ${torrent.numPeers}\nPreparing playback stream...`)
 
-        if (file) {
-          file.appendTo('#output')
-        } else {
-          log.innerText = "Torrent loaded, but no browser-playable files found."
-        }
-      })
+          // Search inside the torrent file list for browser supported rendering types
+          const file = torrent.files.find(f => 
+            f.name.endsWith('.mp4') || f.name.endsWith('.webm') || 
+            f.name.endsWith('.mp3') || f.name.endsWith('.jpg') || f.name.endsWith('.png')
+          )
+
+          if (file) {
+            printLog(`Streaming asset target found: ${file.name}\nAppending media stream buffer to display panel...`)
+            file.appendTo('#output')
+          } else {
+            printLog(`Torrent data loaded successfully, but it does not contain web-playable visual assets (.mp4, .webm, .mp3, .jpg, .png).`)
+          }
+        })
+
+        // Track running download speed updates
+        torrent.on('download', (bytes) => {
+          printLog(
+            `Downloading: ${torrent.name}\n` +
+            `Progress: ${(torrent.progress * 100).toFixed(2)}%\n` +
+            `Download Speed: ${(client.downloadSpeed / 1024 / 1024).toFixed(2)} MB/s\n` +
+            `Active WebRTC Connected Peers: ${torrent.numPeers}`
+          );
+        })
+
+        // Catch engine connection errors cleanly 
+        client.on('error', (err) => {
+          printLog(`Engine Error encountered: ${err.message || err}`)
+        })
+
+      } catch (err) {
+        printLog(`Execution crashed: ${err.message}`);
+      }
     })
   </script>
 </body>
