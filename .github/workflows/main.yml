@@ -18,8 +18,8 @@ jobs:
 
       - name: Clone Speed Stars source repository
         run: |
-          # Clones the root repository containing the target game assets
-          git clone --depth 1 https://github.com/epicfreegames78/epicfreegames78.github.io/tree/main/speed-stars temp-repo
+          # Clones the actual repository root instead of the web tree path
+          git clone --depth 1 https://github.com/elithebest222-gg/web/actions/runs/35891361701/job/107284364880 temp-repo
 
       - name: Move Assets to Target Location
         run: |
@@ -59,7 +59,7 @@ jobs:
       - name: Commit and push changes safely to main
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.email "github-actions[bot]@://github.com"
           
           git add games/speed-stars/
           if ! git diff --cached --quiet; then
