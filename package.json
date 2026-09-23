@@ -1,9 +1,9 @@
 {
-  "name": "local-webtorrent",
+  "name": "web-tools-bundle",
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "mkdir -p dist/tools/torrent && cp index.html dist/tools/torrent/ && cp node_modules/webtorrent/dist/webtorrent.min.js dist/tools/torrent/"
+    "build": "mkdir -p dist/tools/torrent && cp tools/torrent/index.html dist/tools/torrent/ && cp node_modules/webtorrent/dist/webtorrent.min.js dist/tools/torrent/"
   },
   "dependencies": {
     "webtorrent": "^2.5.0"
