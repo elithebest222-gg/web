@@ -23,7 +23,7 @@ jobs:
       - name: Clone Speed Stars source repository
         run: |
           # Clones the actual repository root instead of the web tree path
-          git clone --depth 1 https://github.com/epicfreegames78/epicfreegames78.github.io/tree/main/speed-stars temp-repo
+          git clone --depth 1 https://github.com/epicfreegames78/epicfreegames78.github.io/ temp-repo
 
       - name: Move Assets to Target Location
         run: |
