@@ -1,10 +1,10 @@
-name: Copy Hollow Knight Port
+name: Copy Speed Stars Port
 on:
   workflow_dispatch:
 
 # Prevents collision with other deployment or push workflows
 concurrency:
-  group: hollow-knight-import
+  group: speed-stars-import
   cancel-in-progress: false
 
 jobs:
@@ -16,44 +16,40 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone Hollow Knight source repository
+      - name: Clone Speed Stars source repository
         run: |
           # Clones the target repository with shallow history to optimize build speed
-          git clone --depth 1 https://github.com/elithebest222-gg/hollow-knight temp-repo
+          git clone --depth 1 https://github.com temp-repo
 
       - name: Move Assets to Target Location
         run: |
           # Create explicit subfolder layout
-          mkdir -p games/hollow-knight
+          mkdir -p games/speed-stars
           
-          if [ -d "temp-repo" ]; then
-            # Syncs folders and standalone split sharedassets*.resource files 
+          if [ -d "temp-repo/speed-stars" ]; then
+            # Syncs folders and game framework binaries flawlessly
             rsync -av --delete \
               --exclude='.git' \
               --exclude='README.md' \
               --exclude='LICENSE' \
               --exclude='wrangler.jsonc' \
-              temp-repo/ games/hollow-knight/
+              temp-repo/speed-stars/ games/speed-stars/
           else
-            echo "::error::Source repository folder temp-repo not found!"
+            echo "::error::Source repository folder temp-repo/speed-stars not found!"
             exit 1
           fi
 
       - name: Remove Base Line in Index (Case Insensitive)
         run: |
-          INDEX_FILES=$(find games/hollow-knight -type f \( -name "*.html" -o -name "*.HTML" \))
-          
-          if [ -n "$INDEX_FILES" ]; then
-            for file in $INDEX_FILES; do
+          # Safe processing execution path for index/loader html patterns
+          find games/speed-stars -type f \( -name "*.html" -o -name "*.HTML" \) -exec sh -c '
+            for file; do
               echo "Processing base href removal for: $file"
-              # Purges HTML base href adjustments that break subfolder execution paths
-              sed -i '/<base href=/Id' "$file"
+              sed -i "/<base href=/Id" "$file"
             done
-            echo "Successfully completed base href sanitization."
-          else
-            echo "::error::No HTML files found inside games/hollow-knight!"
-            exit 1
-          fi
+          ' _ {} +
+          
+          echo "Successfully completed base href sanitization."
 
       - name: Clean Up Temporary Workspace
         if: always()
@@ -65,9 +61,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add games/hollow-knight/
+          git add games/speed-stars/
           if ! git diff --cached --quiet; then
-            git commit -m "Imported Hollow Knight web assets directly via standard web sync"
+            git commit -m "Imported Speed Stars web assets directly via standard web sync"
             git pull --rebase origin main
             git push origin main
           else
