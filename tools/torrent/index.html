@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Local WebTorrent Client</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; text-align: center; background: #121212; color: #fff; }
+    input { width: 80%; padding: 12px; margin-bottom: 20px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; }
+    button { padding: 12px 24px; background: #4caf50; border: none; color: white; border-radius: 4px; cursor: pointer; }
+    #output video, #output img { max-width: 100%; margin-top: 20px; border-radius: 8px; }
+    #log { color: #aaa; margin-top: 15px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <h1>⚡ Natively Hosted WebTorrent Player</h1>
+  <p>Running entirely out of local repository storage in /tools/torrent/</p>
+  
+  <input type="text" id="magnetLink" placeholder="Paste magnet URI here...">
+  <button id="downloadBtn">Stream Torrent</button>
+
+  <div id="log">Status: Idle</div>
+  <div id="output"></div>
+
+  <!-- Relative local path -->
+  <script src="./webtorrent.min.js"></script>
+
+  <script>
+    const client = new WebTorrent()
+    const log = document.getElementById('log')
+    const output = document.getElementById('output')
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const magnetURI = document.getElementById('magnetLink').value.trim()
+      if (!magnetURI) return alert('Please paste a valid magnet link!')
+
+      log.innerText = 'Connecting to WebRTC peers...'
+      output.innerHTML = ''
+
+      client.add(magnetURI, (torrent) => {
+        log.innerText = `Streaming: ${torrent.name} (Peers: ${torrent.numPeers})`
+
+        torrent.on('wire', () => {
+          log.innerText = `Streaming: ${torrent.name} (Peers: ${torrent.numPeers})`
+        })
+
+        const file = torrent.files.find(f => 
+          f.name.endsWith('.mp4') || f.name.endsWith('.webm') || 
+          f.name.endsWith('.mp3') || f.name.endsWith('.jpg') || f.name.endsWith('.png')
+        )
+
+        if (file) {
+          file.appendTo('#output')
+        } else {
+          log.innerText = "Torrent loaded, but no browser-playable files found."
+        }
+      })
+    })
+  </script>
+</body>
+</html>
