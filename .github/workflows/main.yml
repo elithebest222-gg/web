@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   copy-files:
-    runs-runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout your repository
         uses: actions/checkout@v4
@@ -18,7 +18,7 @@ jobs:
 
       - name: Clone Speed Stars source repository
         run: |
-          # FIXED: Added the placeholder path. Replace OWNER/REPOSITORY with the real target repository.
+          # Clones the root repository containing the target game assets
           git clone --depth 1 https://github.com/epicfreegames78/epicfreegames78.github.io/tree/main/speed-stars temp-repo
 
       - name: Move Assets to Target Location
@@ -59,7 +59,7 @@ jobs:
       - name: Commit and push changes safely to main
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@://github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           git add games/speed-stars/
           if ! git diff --cached --quiet; then
