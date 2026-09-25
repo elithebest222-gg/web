@@ -22,24 +22,23 @@ jobs:
 
       - name: Clone Speed Stars source repository
         run: |
-          # Clones the actual repository root instead of the web tree path
-          git clone --depth 1 https://github.com/epicfreegames78/epicfreegames78.github.io/ temp-repo
+          # Clones the newly targeted fixed repository main branch
+          git clone --depth 1 https://github.com temp-repo
 
       - name: Move Assets to Target Location
         run: |
           # Create explicit subfolder layout
           mkdir -p games/speed-stars
           
-          if [ -d "temp-repo/speed-stars" ]; then
-            # Syncs folders and game framework binaries flawlessly
+          if [ -d "temp-repo/game/speed-stars-unblocked" ]; then
+            # Syncs folders and unblocked framework files from the requested source path
             rsync -av --delete \
               --exclude='.git' \
               --exclude='README.md' \
               --exclude='LICENSE' \
-              --exclude='wrangler.jsonc' \
-              temp-repo/speed-stars/ games/speed-stars/
+              temp-repo/game/speed-stars-unblocked/ games/speed-stars/
           else
-            echo "::error::Source repository folder temp-repo/speed-stars not found!"
+            echo "::error::Source repository folder temp-repo/game/speed-stars-unblocked not found!"
             exit 1
           fi
 
@@ -67,7 +66,7 @@ jobs:
           
           git add games/speed-stars/
           if ! git diff --cached --quiet; then
-            git commit -m "Imported Speed Stars web assets directly via standard web sync"
+            git commit -m "Imported Speed Stars web assets directly via fixed unblocked source sync"
             git pull --rebase origin main
             git push origin main
           else
