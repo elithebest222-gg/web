@@ -23,7 +23,7 @@ jobs:
       - name: Clone Speed Stars source repository
         run: |
           # Clones the newly targeted fixed repository main branch
-          git clone --depth 1 https://github.com temp-repo
+          git clone --depth 1 https://github.com/elithebest222-gg/fixed-speed-stars/ temp-repo
 
       - name: Move Assets to Target Location
         run: |
