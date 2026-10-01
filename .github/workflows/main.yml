@@ -1,10 +1,10 @@
-name: Copy Speed Stars Port
+name: Copy Dead Plate Port
 on:
   workflow_dispatch:
 
 # Prevents collision with other deployment or push workflows
 concurrency:
-  group: speed-stars-import
+  group: dead-plate-import
   cancel-in-progress: false
 
 # GRANTS WRITE PERMISSION TO THE GITHUB_TOKEN
@@ -20,32 +20,32 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone Speed Stars source repository
+      - name: Clone Dead Plate source repository
         run: |
-          # Clones the newly targeted fixed repository main branch
-          git clone --depth 1 https://github.com/elithebest222-gg/fixed-speed-stars/ temp-repo
+          # Clones the web-port repository main branch
+          git clone --depth 1 https://github.com/elithebest222-gg/web-port/ temp-repo
 
       - name: Move Assets to Target Location
         run: |
           # Create explicit subfolder layout
-          mkdir -p games/speed-stars
+          mkdir -p games/dead-plate
           
-          if [ -d "temp-repo/game/speed-stars-unblocked" ]; then
-            # Syncs folders and unblocked framework files from the requested source path
+          if [ -d "temp-repo/dead-plate" ]; then
+            # Syncs folders and game framework files from the requested source path
             rsync -av --delete \
               --exclude='.git' \
               --exclude='README.md' \
               --exclude='LICENSE' \
-              temp-repo/game/speed-stars-unblocked/ games/speed-stars/
+              temp-repo/dead-plate/ games/dead-plate/
           else
-            echo "::error::Source repository folder temp-repo/game/speed-stars-unblocked not found!"
+            echo "::error::Source repository folder temp-repo/dead-plate not found!"
             exit 1
           fi
 
       - name: Remove Base Line in Index (Case Insensitive)
         run: |
           # Safe processing execution path for index/loader html patterns
-          find games/speed-stars -type f \( -name "*.html" -o -name "*.HTML" \) -exec sh -c '
+          find games/dead-plate -type f \( -name "*.html" -o -name "*.HTML" \) -exec sh -c '
             for file; do
               echo "Processing base href removal for: $file"
               sed -i "/<base href=/Id" "$file"
@@ -64,9 +64,9 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add games/speed-stars/
+          git add games/dead-plate/
           if ! git diff --cached --quiet; then
-            git commit -m "Imported Speed Stars web assets directly via fixed unblocked source sync"
+            git commit -m "Imported Dead Plate web assets directly via web-port source sync"
             git pull --rebase origin main
             git push origin main
           else
