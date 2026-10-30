@@ -1,4 +1,4 @@
-name: Copy FNAF Into The Pit Port
+name: Copy Thats Not My Neighbor Port
 on:
   workflow_dispatch:
 
@@ -13,27 +13,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Clone FNAF Into The Pit source repository
+      - name: Clone Thats Not My Neighbor subdirectory
         run: |
-          # Clones the web-ports/fnaf-into-the-pit repository with minimal history
-          git clone --depth 1 https://github.com/web-ports/fnaf-into-the-pit temp-repo
+          # Performs a sparse clone to grab only the required game folder
+          git clone --depth 1 --sparse --filter=blob:none https://github.com/genizy/web-port temp-repo
+          cd temp-repo
+          git sparse-checkout set thats-not-my-neighbor
 
       - name: Move Assets to Target Location
         run: |
           # Setup destination root structure
-          mkdir -p games/fnaf-pit
+          mkdir -p games/thats-not-my-neighbor
           
-          # Copy over everything except git config metadata
-          if [ -d "temp-repo" ]; then
-            rsync -av --exclude='.git' temp-repo/ games/fnaf-pit/
+          # Copy over the specific game directory contents
+          if [ -d "temp-repo/thats-not-my-neighbor" ]; then
+            rsync -av temp-repo/thats-not-my-neighbor/ games/thats-not-my-neighbor/
           else
-            echo "::error::Source repository folder temp-repo not found!"
+            echo "::error::Source folder thats-not-my-neighbor not found!"
             exit 1
           fi
 
       - name: Remove Base Line in Index (Case Insensitive)
         run: |
-          INDEX_FILES=$(find games/fnaf-pit -iname "index.html")
+          INDEX_FILES=$(find games/thats-not-my-neighbor -iname "index.html")
           
           if [ -n "$INDEX_FILES" ]; then
             for file in $INDEX_FILES; do
@@ -42,7 +44,7 @@ jobs:
             done
             echo "Successfully completed base href sanitization."
           else
-            echo "::error::No index.html file found anywhere in games/fnaf-pit!"
+            echo "::error::No index.html file found anywhere in games/thats-not-my-neighbor!"
             exit 1
           fi
 
@@ -56,8 +58,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           # Stage and commit the new game assets
-          git add games/fnaf-pit/
-          git commit -m "Imported FNAF Into The Pit web assets directly via standard web sync" || echo "No changes to commit"
+          git add games/thats-not-my-neighbor/
+          git commit -m "Imported Thats Not My Neighbor web assets directly via standard web sync" || echo "No changes to commit"
           
           git pull --rebase origin main
           git push origin main
