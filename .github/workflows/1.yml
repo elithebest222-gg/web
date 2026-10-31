@@ -16,7 +16,7 @@ jobs:
       - name: Clone Eaglercraft Web subdirectory
         run: |
           # Performs a sparse clone to grab only the Web folder from the Eaglercraft repo
-          git clone --depth 1 --filter=blob:none --sparse https://github.com temp-repo
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/XxFluffyAsherxX/Eaglercraft-1.12.2 temp-repo
           cd temp-repo
           # Explicitly target and extract the 'Web' subdirectory structure
           git sparse-checkout set Web
